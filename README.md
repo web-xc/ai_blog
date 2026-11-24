@@ -96,6 +96,8 @@ pinned: false
 
 ## 🔗 部署到 GitHub Pages
 
+> 已经有一个 `https://<用户名>.github.io/<仓库名>/` 站点、不想动旧仓库？**直接看下一节**，最省事的做法是新建一个仓库，旧仓库和旧站点一个字节都不用改。
+
 ### 1. 创建仓库并推送
 
 ```bash
@@ -127,6 +129,92 @@ git push -u origin main
 - 默认值在 `src/config/site.ts`（改这里需要重新构建）
 - 运行时覆盖：进入 `/admin` → **站点设置**，改完点保存，立即生效（保存在浏览器 localStorage）
 - 可选的编译期变量见 `.env.example`；Actions 中还可设置仓库变量 `TWIKOO_ENV_ID`
+
+---
+
+## 🧩 已有仓库怎么办（不替换旧站点）
+
+GitHub Pages 的规则是：**一个仓库 = 一个站点，一个站点 = 一个部署来源**；而一个账号可以有 1 个用户页 + 任意多个项目页。所以你原来的 `https://<用户名>.github.io/<仓库名>/` 完全可以原样保留，两条路都不需要「替换」它。
+
+### 路线 A · 新建一个仓库（推荐，零风险）
+
+旧仓库不用碰，博客拥有自己的地址 `https://<用户名>.github.io/<新仓库名>/`。本目录已经是 git 仓库并有提交记录，只需：
+
+```bash
+cd C:/Users/Administrator/Music/Blog
+git remote add origin https://github.com/<用户名>/<新仓库名>.git   # ← 新仓库，不是旧仓库
+git branch -M main
+git push -u origin main
+```
+
+然后在**新仓库** Settings → Pages → Source 选 **GitHub Actions**。旧仓库的文件、Pages 配置和访问地址全部不变，两个站点同时在线。
+
+> ⚠️ 不要在旧仓库目录下执行这些命令，也不要把 `origin` 指向旧仓库地址 —— 那才会把内容推到旧仓库里。
+
+### 路线 B · 复用同一个仓库，新旧站点共存
+
+博客挂在 `https://<用户名>.github.io/<仓库名>/blog/`，旧站点继续留在 `https://<用户名>.github.io/<仓库名>/`，源码、旧静态文件、博客产物同处一个仓库，互不覆盖。
+
+**前提**：`actions/deploy-pages` 每次会用 artifact **整包替换**该仓库的 Pages 站点，所以必须把旧站点的静态文件一起打进 artifact（靠 `PAGES_LEGACY_DIR`），否则旧页面会消失。旧分支里的数据不会被删除，随时可以把 Pages Source 改回原分支回退。
+
+**1. 克隆旧仓库（不要先删任何文件）**
+
+```bash
+git clone https://github.com/<用户名>/<仓库名>.git old-repo
+cd old-repo
+git checkout -b integrate-blog   # 建议先开分支验证，最后合并回默认分支才会触发部署
+```
+
+**2. 把博客源码放进 `blog/` 子目录**
+
+```bash
+BLOG_SRC="/c/Users/Administrator/Music/Blog"
+mkdir -p blog
+cp -r "$BLOG_SRC"/src "$BLOG_SRC"/public "$BLOG_SRC"/index.html \
+      "$BLOG_SRC"/package.json "$BLOG_SRC"/package-lock.json \
+      "$BLOG_SRC"/tsconfig.json "$BLOG_SRC"/vite.config.ts \
+      "$BLOG_SRC"/.env.example "$BLOG_SRC"/.gitignore "$BLOG_SRC"/README.md blog/
+```
+
+**3. workflow 必须放在仓库根**（GitHub 只识别根目录的 `.github/workflows/`；改名避免与旧 workflow 撞名）
+
+```bash
+mkdir -p .github/workflows
+cp "$BLOG_SRC/.github/workflows/deploy.yml" .github/workflows/aurora-blog.yml
+```
+
+**4. 把旧站点的静态文件放进 `legacy/`** —— 按旧仓库原来的 Pages 来源选一种：
+
+| 旧站点来源 | 操作 |
+| --- | --- |
+| `gh-pages` 分支 | `git fetch origin gh-pages && mkdir -p legacy && git archive origin/gh-pages \| tar -x -C legacy` |
+| 默认分支的 `/docs` | 不用复制，直接把变量 `PAGES_LEGACY_DIR` 设为 `docs` |
+| 根目录就是静态 HTML | 把旧文件挑出来放进 `legacy/`（注意别把新加的 `blog/` 和 `.github/` 复制进去） |
+| 另一套 GitHub Actions 生成 | 需要把旧的构建步骤合并进同一个 workflow；**这种情况更建议用路线 A** |
+
+**5. 设置仓库变量** —— Settings → Secrets and variables → Actions → Variables → New repository variable
+
+| 变量 | 值 | 作用 |
+| --- | --- | --- |
+| `BLOG_DIR` | `blog` | 源码在子目录，安装 / 构建时进入该目录 |
+| `PAGES_SUBPATH` | `blog` | 博客产物放到站点的 `/blog/` 下 |
+| `PAGES_LEGACY_DIR` | `legacy`（或 `docs`） | 旧站点文件合并到站点根 |
+
+`VITE_POSTS_DIR` 会自动推导成 `blog/src/content/posts`，后台发布文章会写进正确目录，无需手填。
+
+**6. 合并到默认分支，并把 Pages Source 改成 GitHub Actions**。约 1 分钟后：
+
+- 旧站点：`https://<用户名>.github.io/<仓库名>/`（不变）
+- 博客：`https://<用户名>.github.io/<仓库名>/blog/`
+
+**7. 后台**：站点设置里 owner / repo 填**这个旧仓库**，分支填默认分支，Token 用具备该仓库 `Contents: read & write` 的 PAT。
+
+几个注意点：
+
+- 共存模式自动启用 hash 路由，博客链接形如 `/<仓库名>/blog/#/post/xxx`。因为站点根 `404.html` 归旧站点所有，hash 路由不依赖它，深链接才不会落到旧站点的 404。想强制关掉就把变量 `VITE_HASH_ROUTER` 设为 `false`。
+- workflow 默认监听 `main` / `master`；旧仓库默认分支不叫这两个的话，改 `on.push.branches`。
+- 只想覆盖站点根、不要子路径？不设 `PAGES_SUBPATH` 即可，但此时整站会变成博客，等于替换旧站点 —— 不符合你的目标。
+- 想回退：Pages Source 改回原来的分支即可，旧分支文件从未被删除。
 
 ---
 
@@ -191,6 +279,10 @@ Token 建议用 **fine-grained PAT**，只授予该仓库的 `Contents: read & w
 **直接打开 `/post/xxx` 显示 404？** 构建插件会把 `dist/index.html` 复制成 `dist/404.html` 作为 SPA 回退，请确认部署产物里存在该文件，且 Pages 的 Source 是 GitHub Actions。
 
 **发布提示 401 / 403 / 404？** 依次检查 Token 是否过期、是否具备 Contents 读写权限、owner/repo/分支是否拼写正确。后台已把错误翻译成中文提示。
+
+**会覆盖我已有的仓库 / 站点吗？** 不会，除非你主动把 `origin` 指向旧仓库并 push。推荐直接新建一个仓库（见「已有仓库怎么办」路线 A）；若坚持复用同一个仓库，务必配置 `PAGES_LEGACY_DIR` 把旧站点文件一起打包，因为 Actions 部署是整包替换 Pages 站点。
+
+**共存模式下博客深链接跳到旧站点的 404？** 该模式默认启用 hash 路由（`#/post/xxx`）规避此问题；确认部署产物中 `blog/index.html` 存在，且仓库变量 `PAGES_SUBPATH` 已设置。
 
 **改了站点标题但没生效？** 后台修改只保存在当前浏览器；想让所有访客生效，请改 `src/config/site.ts` 后重新推送。
 

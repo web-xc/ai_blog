@@ -6,7 +6,12 @@
  * which triggers the GitHub Actions workflow and redeploys the blog.
  */
 const API = 'https://api.github.com'
-export const POSTS_DIR = 'src/content/posts'
+/**
+ * Folder the admin commits Markdown into. When the blog source is nested in an
+ * existing repository (e.g. `blog/`), the workflow injects the matching prefix
+ * so published posts land in the folder that `import.meta.glob` scans.
+ */
+export const POSTS_DIR = (import.meta.env.VITE_POSTS_DIR || 'src/content/posts').replace(/^\/+|\/+$/g, '')
 
 export interface MarkdownDocument {
   slug: string

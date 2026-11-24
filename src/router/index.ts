@@ -1,9 +1,13 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import { defaultSiteConfig } from '@/config/site'
 import { useSiteStore } from '@/stores/site'
 
+// Coexist mode (blog nested under /<repo>/<sub>/) cannot own the site-root
+// 404.html, so hash history keeps deep links working without any rewrite rules.
+const useHash = import.meta.env.VITE_HASH_ROUTER === 'true'
+
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: useHash ? createWebHashHistory() : createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '首页' } },
     { path: '/post/:slug', name: 'post', component: () => import('@/views/PostView.vue'), meta: { title: '文章' } },

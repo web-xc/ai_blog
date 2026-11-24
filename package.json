@@ -1,0 +1,29 @@
+{
+  "name": "aurora-blog",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A modern Vue 3 static blog with Hexo-style Markdown workflow, GitHub Actions deployment, Twikoo comments and a full admin dashboard.",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:fast": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.78.0",
+    "highlight.js": "^11.12.0",
+    "markdown-it": "^15.0.3",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.46",
+    "vue-router": "^5.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vue-tsc": "^3.3.14"
+  }
+}

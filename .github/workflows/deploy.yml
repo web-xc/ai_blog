@@ -1,0 +1,70 @@
+name: Deploy Aurora Blog to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A project page lives at /<repo>/, a user page at /.
+      # Vite reads VITE_BASE from the environment (see vite.config.ts).
+      - name: Resolve deployment base path
+        run: |
+          REPO="${GITHUB_REPOSITORY##*/}"
+          if [[ "$REPO" == *.github.io ]]; then
+            echo "VITE_BASE=/" >> "$GITHUB_ENV"
+          else
+            echo "VITE_BASE=/$REPO/" >> "$GITHUB_ENV"
+          fi
+          echo "Detected base: $(tail -n 1 "$GITHUB_ENV")"
+
+      - name: Build site
+        run: npm run build
+        env:
+          VITE_TWIKOO_ENV_ID: ${{ vars.TWIKOO_ENV_ID || '' }}
+          VITE_GITHUB_OWNER: ${{ github.repository_owner }}
+          VITE_GITHUB_REPO: ${{ github.event.repository.name }}
+
+      # GitHub Pages would otherwise run Jekyll and ignore _-prefixed assets.
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

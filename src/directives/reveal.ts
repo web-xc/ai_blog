@@ -2,6 +2,7 @@ import type { Directive } from 'vue'
 
 interface RevealElement extends HTMLElement {
   __revealObserver?: IntersectionObserver
+  __revealFallback?: number
 }
 
 /** v-reveal="120" — fades / lifts an element into view with an optional delay (ms). */
@@ -12,11 +13,17 @@ export const reveal: Directive<RevealElement, number | string | undefined> = {
     const delay = Number(binding.value ?? 0) || 0
     if (delay) el.style.setProperty('--reveal-delay', `${delay}ms`)
 
+    const show = () => el.classList.add('is-visible')
+    const inViewport = () => {
+      const rect = el.getBoundingClientRect()
+      return rect.top < window.innerHeight && rect.bottom > 0
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible')
+            show()
             observer.unobserve(entry.target)
           }
         })
@@ -25,9 +32,22 @@ export const reveal: Directive<RevealElement, number | string | undefined> = {
     )
     observer.observe(el)
     el.__revealObserver = observer
+
+    // Safety net: IntersectionObserver callbacks can be delayed or skipped in
+    // headless / low-power environments. Never leave content invisible.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (inViewport()) show()
+      })
+    })
+    el.__revealFallback = window.setTimeout(() => {
+      if (inViewport()) show()
+    }, 1600)
   },
   unmounted(el) {
     el.__revealObserver?.disconnect()
+    if (el.__revealFallback) window.clearTimeout(el.__revealFallback)
     delete el.__revealObserver
+    delete el.__revealFallback
   },
 }

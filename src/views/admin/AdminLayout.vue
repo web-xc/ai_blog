@@ -52,7 +52,9 @@ const greeting = computed(() => {
 const pageTitle = computed(() => (route.meta.title as string) || '概览')
 
 function isActive(to: string, exact: boolean) {
-  return exact ? route.path === to : route.path === to || (to !== '/admin/editor/new' && route.path.startsWith(to))
+  if (exact) return route.path === to
+  if (to === '/admin/editor/new') return route.path.startsWith('/admin/editor')
+  return route.path === to || route.path.startsWith(to)
 }
 function logout() {
   admin.logout()

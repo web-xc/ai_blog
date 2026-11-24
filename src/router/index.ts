@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { defaultSiteConfig } from '@/config/site'
+import { useSiteStore } from '@/stores/site'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,8 +39,17 @@ const router = createRouter({
 })
 
 router.afterEach((to) => {
+  let siteTitle = defaultSiteConfig.title
+  let subtitle = defaultSiteConfig.subtitle
+  try {
+    const site = useSiteStore()
+    siteTitle = site.config.title
+    subtitle = site.config.subtitle
+  } catch {
+    // Pinia may not be active yet during the very first navigation.
+  }
   const title = (to.meta.title as string) || ''
-  document.title = title ? `${title} · ${defaultSiteConfig.title}` : defaultSiteConfig.title
+  document.title = title ? `${title} · ${siteTitle}` : `${siteTitle} · ${subtitle}`
 })
 
 export default router

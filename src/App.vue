@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useSiteStore } from '@/stores/site'
 import AuroraBackground from '@/components/AuroraBackground.vue'
 import SiteHeader from '@/components/SiteHeader.vue'
@@ -10,16 +10,20 @@ import BackToTop from '@/components/BackToTop.vue'
 import ToastHost from '@/components/ToastHost.vue'
 
 const route = useRoute()
+const router = useRouter()
 const site = useSiteStore()
 const isPlain = computed(() => Boolean(route.meta.plain))
 
+// Route titles are set in router.afterEach; this keeps them in sync when the
+// site name is changed from the admin dashboard without a rebuild.
 watch(
-  [() => route.meta.title, () => site.config.title],
+  () => [site.config.title, site.config.subtitle],
   () => {
-    const title = (route.meta.title as string) || ''
-    document.title = title ? `${title} · ${site.config.title}` : `${site.config.title} · ${site.config.subtitle}`
+    const metaTitle = router.currentRoute.value.meta.title as string | undefined
+    document.title = metaTitle
+      ? `${metaTitle} · ${site.config.title}`
+      : `${site.config.title} · ${site.config.subtitle}`
   },
-  { immediate: true },
 )
 </script>
 
@@ -31,7 +35,10 @@ watch(
   <main :class="isPlain ? 'plain-main' : 'site-main'">
     <RouterView v-slot="{ Component, route: viewRoute }">
       <Transition name="page" mode="out-in">
-        <component :is="Component" :key="viewRoute.fullPath" />
+        <component
+          :is="Component"
+          :key="viewRoute.meta.plain ? `plain-${viewRoute.matched[0]?.path ?? ''}` : viewRoute.fullPath"
+        />
       </Transition>
     </RouterView>
   </main>

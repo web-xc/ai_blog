@@ -15,3 +15,5 @@ app.mount('#app')
 requestAnimationFrame(() => {
   requestAnimationFrame(() => document.documentElement.classList.add('app-ready'))
 })
+// Fallback for throttled/background tabs where rAF may not fire promptly.
+window.setTimeout(() => document.documentElement.classList.add('app-ready'), 1200)

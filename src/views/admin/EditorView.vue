@@ -35,6 +35,8 @@ function load() {
   const id = String(route.params.id || '')
   if (id === 'new') {
     const created = admin.newDraft()
+    // Show the editor immediately; the URL replace is only cosmetic.
+    draft.value = { ...created }
     void router.replace(`/admin/editor/${created.id}`)
     return
   }

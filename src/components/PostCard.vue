@@ -65,10 +65,12 @@ function toggleBookmark() {
       <p class="post-card__excerpt">{{ post.excerpt }}</p>
 
       <div class="post-card__foot">
+        <span class="post-card__cat">{{ post.category }}</span>
         <div class="post-card__tags">
           <span v-for="tag in tags" :key="tag" class="post-card__tag">#{{ tag }}</span>
           <span v-if="post.tags.length > 2" class="post-card__tag">+{{ post.tags.length - 2 }}</span>
         </div>
+        <span class="post-card__date-m">{{ formatDate(post.date) }}</span>
         <RouterLink :to="`/post/${post.slug}`" class="post-card__go" :aria-label="`阅读 ${post.title}`">
           <ArrowUpRight :size="16" />
         </RouterLink>
@@ -86,7 +88,7 @@ function toggleBookmark() {
 }
 .post-card:hover::before { opacity: 1; }
 
-.post-card__cover { position: relative; display: block; height: 96px; overflow: hidden; }
+.post-card__cover { position: relative; display: block; height: 88px; overflow: hidden; }
 .post-card__cover-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px); background-size: 22px 22px; mask-image: linear-gradient(135deg, #000, transparent 75%); }
 .post-card__cover-ring { position: absolute; width: 140px; height: 140px; border: 1px solid rgba(255,255,255,.3); border-radius: 50%; top: -70px; right: -40px; transition: transform .8s var(--ease); }
 .post-card:hover .post-card__cover-ring { transform: scale(1.18) rotate(18deg); }
@@ -107,7 +109,10 @@ function toggleBookmark() {
 .post-card__title { font-size: 14.5px; font-weight: 730; line-height: 1.38; color: var(--text); letter-spacing: -.02em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.76em; transition: color .25s ease; }
 .post-card__title:hover { color: var(--accent); }
 .post-card__excerpt { flex: 1; margin: 6px 0 10px; font-size: 12px; line-height: 1.65; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.post-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.post-card__foot { display: flex; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.post-card__cat { display: none; font-size: 11px; font-weight: 650; color: var(--accent); white-space: nowrap; }
+.post-card__cat::after { content: " ·"; color: var(--text-muted); font-weight: 400; }
+.post-card__date-m { display: none; font-size: 10.5px; color: var(--text-muted); white-space: nowrap; }
 .post-card__tags { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; overflow: hidden; }
 .post-card__tag { font-size: 10.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 .post-card__go { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--border); color: var(--accent); transition: all .35s var(--ease); }
@@ -118,27 +123,41 @@ function toggleBookmark() {
   .post-card:hover .post-card__go { transform: none; }
 }
 @media (max-width: 700px) {
-  /* The full-bleed row shell lives in main.css (.post-list) so it also
-     covers lists where PostCard is wrapped, e.g. the bookmarks page. */
-  .post-card { flex-direction: row; align-items: stretch; }
+  /* Full-bleed list row (shell in main.css): rounded thumbnail on the left,
+     one clean text column, inset hairline between rows. */
+  .post-card { flex-direction: row; align-items: center; }
   .post-card::before { display: none; }
-  .post-card__cover { width: 116px; height: auto; min-height: 104px; flex: none; }
+  .post-card::after {
+    content: ""; position: absolute; left: 152px; right: 0; bottom: 0; height: 1px;
+    background: var(--border); pointer-events: none;
+  }
+
+  .post-card__cover {
+    width: 124px; height: 94px; flex: none;
+    margin: 10px 0 10px 14px; border-radius: 15px;
+    filter: saturate(.75) brightness(1.02);
+  }
+  .post-card__cover-grid { background-size: 18px 18px; opacity: .5; }
   .post-card__cover-ring { display: none; }
-  .post-card__emoji { font-size: 38px; animation: none; }
+  .post-card__emoji { font-size: 30px; animation: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,.16)); }
   .post-card__date { display: none; }
-  .post-card__pin { right: 6px; bottom: 6px; padding: 3px 6px; font-size: 9px; backdrop-filter: none; }
-  .post-card__bookmark { top: 6px; left: 6px; right: auto; width: 24px; height: 24px; backdrop-filter: none; background: rgba(10,14,30,.62); }
-  .post-card__body { padding: 9px 11px 8px; }
-  .post-card__meta { margin-bottom: 5px; }
-  .post-card__meta .chip { padding: 2px 7px; font-size: 10px; }
-  .post-card__title { font-size: 13.5px; line-height: 1.35; min-height: 0; }
+  .post-card__pin { right: 8px; bottom: 7px; padding: 3px 7px; font-size: 9px; backdrop-filter: none; }
+  .post-card__bookmark { top: 16px; left: 20px; right: auto; width: 26px; height: 26px; backdrop-filter: none; background: rgba(10,14,30,.55); }
+
+  .post-card__body { padding: 10px 14px 10px 14px; }
+  .post-card__meta { display: none; }
+  .post-card__title { font-size: 15px; line-height: 1.42; min-height: 0; margin-top: 1px; }
   .post-card__excerpt { display: none; }
-  .post-card__foot { padding-top: 6px; }
-  .post-card__tags { gap: 6px; }
-  .post-card__go { width: 24px; height: 24px; }
+  .post-card__foot { margin-top: 8px; padding-top: 0; border-top: 0; }
+  .post-card__cat, .post-card__date-m { display: inline; }
+  .post-card__date-m { margin-left: auto; }
+  .post-card__tags { flex: 1; gap: 7px; flex-wrap: nowrap; overflow: hidden; }
+  .post-card__tags .post-card__tag:nth-child(n+2) { display: none; }
+  .post-card__go { display: none; }
 }
 @media (max-width: 380px) {
-  .post-card__cover { width: 100px; min-height: 100px; }
-  .post-card__read { display: none; }
+  .post-card__cover { width: 112px; height: 88px; margin-left: 12px; }
+  .post-card__body { padding-left: 12px; }
+  .post-card::after { left: 136px; }
 }
 </style>

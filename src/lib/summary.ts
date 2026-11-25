@@ -53,7 +53,8 @@ export function localSummary(title: string, markdown: string): AiResult {
 
   return {
     summary: first.replace(/[。；;]$/, '') + '。',
-    bullets: ordered.length ? ordered : [text.slice(0, 110)],
+    // Avoid repeating the summary sentence verbatim as the first bullet.
+    bullets: ordered.length ? ordered.filter((s) => s !== first) : [text.slice(0, 110)],
     tags,
     source: 'local',
   }

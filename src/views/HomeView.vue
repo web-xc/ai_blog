@@ -134,7 +134,7 @@ onUnmounted(() => clearTimeout(timer))
         <RouterLink to="/archive" class="btn btn-ghost btn-sm">全部文章 <ArrowRight :size="14" /></RouterLink>
       </div>
 
-      <div class="post-grid">
+      <div class="post-list">
         <PostCard
           v-for="(post, i) in pagePosts"
           :key="post.slug"
@@ -259,7 +259,6 @@ onUnmounted(() => clearTimeout(timer))
 /* section head */
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 34px; flex-wrap: wrap; }
 .section-sub { margin: 10px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.8; }
-.post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 40px; flex-wrap: wrap; }
 .disabled { opacity: .4; pointer-events: none; }
 .pagination__pages { display: flex; gap: 6px; }
@@ -287,7 +286,6 @@ onUnmounted(() => clearTimeout(timer))
 .cta__content { position: relative; }
 
 @media (max-width: 1100px) {
-  .post-grid { grid-template-columns: repeat(2, 1fr); }
   .topics__card { grid-template-columns: 1.4fr 1fr; gap: 24px; }
 }
 @media (max-width: 980px) {
@@ -300,7 +298,6 @@ onUnmounted(() => clearTimeout(timer))
   .topics__side { border-left: 0; border-top: 1px solid var(--border); padding: 24px 0 0; }
 }
 @media (max-width: 700px) {
-  .post-grid { grid-template-columns: 1fr; gap: 14px; }
   .hero { padding: 20px 0 16px; min-height: 0; }
   .hero__visual { height: 168px; }
   .orbit--1 { width: 176px; height: 176px; } .orbit--2 { width: 132px; height: 132px; } .orbit--3 { width: 88px; height: 88px; }

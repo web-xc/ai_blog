@@ -186,9 +186,16 @@ onUnmounted(() => {
 
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; }
-  .admin-sidebar { position: fixed; right: 0; left: auto; top: 0; width: 244px; transform: translateX(100%); transition: transform .38s var(--ease); box-shadow: var(--shadow-lg); border-left: 1px solid var(--border); border-right: 0; }
+  .admin-sidebar { position: fixed; right: 0; left: auto; top: 0; width: min(76vw, 212px); padding: 16px 10px; transform: translateX(100%); transition: transform .38s var(--ease); box-shadow: var(--shadow-lg); border-left: 1px solid var(--border); border-right: 0; }
   .admin-shell.is-mobile-open .admin-sidebar { transform: none; }
-  .admin-shell.is-mobile-open .sidebar-mask { display: block; position: fixed; inset: 0; z-index: 45; background: rgba(8,11,22,.45); backdrop-filter: blur(3px); }
+  .admin-shell.is-mobile-open .sidebar-mask { display: block; position: fixed; inset: 0; z-index: 45; background: rgba(8,11,22,.45); }
+  .admin-brand { gap: 8px; padding: 2px 4px 18px; }
+  .admin-brand__text strong { font-size: 14px; }
+  .admin-brand__text small { font-size: 9px; }
+  .admin-nav__label { padding: 0 8px 6px; font-size: 10px; }
+  .admin-nav__item { gap: 9px; padding: 8px 10px; font-size: 12.5px; }
+  .deploy-badge { margin: 0 4px 10px; padding: 7px 9px; font-size: 10px; }
+  .admin-sidebar__foot { padding-top: 12px; }
   .admin-menu-btn { display: inline-flex; }
   .admin-content { padding: 20px 16px; }
   .admin-topbar { padding: 0 16px; }

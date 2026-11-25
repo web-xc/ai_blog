@@ -16,11 +16,14 @@ let mouse = { x: -9999, y: -9999 }
 let running = false
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const compactQuery = window.matchMedia('(max-width: 700px)')
+let compact = compactQuery.matches
 
 function resize() {
   const el = canvas.value
   if (!el) return
-  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  // Phones pay for every canvas pixel; cap the backing store separately.
+  const dpr = compact ? Math.min(window.devicePixelRatio || 1, 1.25) : Math.min(window.devicePixelRatio || 1, 2)
   width = window.innerWidth
   height = window.innerHeight
   el.width = width * dpr
@@ -30,7 +33,9 @@ function resize() {
   ctx = el.getContext('2d')
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-  const count = Math.min(72, Math.max(24, Math.round((width * height) / 26000)))
+  const count = compact
+    ? Math.min(18, Math.max(10, Math.round((width * height) / 42000)))
+    : Math.min(72, Math.max(24, Math.round((width * height) / 26000)))
   particles = Array.from({ length: count }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
@@ -41,8 +46,15 @@ function resize() {
   }))
 }
 
-function frame() {
+let lastFrame = 0
+function frame(t: number) {
   if (!ctx || !running) return
+  // Cap to ~30fps on phones: the particle field is decoration, not content.
+  if (compact && t - lastFrame < 32) {
+    raf = requestAnimationFrame(frame)
+    return
+  }
+  lastFrame = t
   ctx.clearRect(0, 0, width, height)
   const dark = document.documentElement.getAttribute('data-theme') === 'dark'
   const rgb = dark ? '150, 170, 255' : '99, 102, 241'
@@ -70,18 +82,21 @@ function frame() {
     ctx.fill()
   }
 
-  for (let i = 0; i < particles.length; i++) {
-    for (let j = i + 1; j < particles.length; j++) {
-      const dx = particles[i].x - particles[j].x
-      const dy = particles[i].y - particles[j].y
-      const d2 = dx * dx + dy * dy
-      if (d2 < 15000) {
-        ctx.beginPath()
-        ctx.moveTo(particles[i].x, particles[i].y)
-        ctx.lineTo(particles[j].x, particles[j].y)
-        ctx.strokeStyle = `rgba(${rgb}, ${(1 - d2 / 15000) * (dark ? 0.16 : 0.1)})`
-        ctx.lineWidth = 0.7
-        ctx.stroke()
+  // The O(n²) link pass is the expensive part; skip it entirely on phones.
+  if (!compact) {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x
+        const dy = particles[i].y - particles[j].y
+        const d2 = dx * dx + dy * dy
+        if (d2 < 15000) {
+          ctx.beginPath()
+          ctx.moveTo(particles[i].x, particles[i].y)
+          ctx.lineTo(particles[j].x, particles[j].y)
+          ctx.strokeStyle = `rgba(${rgb}, ${(1 - d2 / 15000) * (dark ? 0.16 : 0.1)})`
+          ctx.lineWidth = 0.7
+          ctx.stroke()
+        }
       }
     }
   }
@@ -103,7 +118,10 @@ function stop() {
 
 function onMouseMove(e: MouseEvent) { mouse = { x: e.clientX, y: e.clientY } }
 function onMouseLeave() { mouse = { x: -9999, y: -9999 } }
-function onResize() { if (running) resize() }
+function onResize() {
+  compact = compactQuery.matches
+  if (running) resize()
+}
 
 watch(() => site.config.showParticles, (on) => (on ? start() : stop()))
 
@@ -147,5 +165,8 @@ onUnmounted(() => {
 .aurora-bg__canvas { position: absolute; inset: 0; }
 html[data-theme="dark"] .aurora-blob { opacity: .38; }
 html[data-theme="dark"] .aurora-bg__grid { opacity: .7; }
-@media (max-width: 700px) { .aurora-blob { filter: blur(60px); } }
+@media (max-width: 700px) {
+  .aurora-blob { filter: blur(46px); animation: none; opacity: .3; }
+  .aurora-bg__grid { opacity: .28; }
+}
 </style>

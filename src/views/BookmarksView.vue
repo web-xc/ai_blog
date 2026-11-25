@@ -32,7 +32,7 @@ function remove(slug: string) {
       <button v-if="posts.length" class="btn btn-ghost btn-sm" @click="clearAll"><Trash2 :size="14" /> 清空全部</button>
     </header>
 
-    <div v-if="posts.length" class="bookmark-grid">
+    <div v-if="posts.length" class="post-list">
       <div v-for="(post, i) in posts" :key="post.slug" class="bookmark-item">
         <PostCard :post="post" :delay="Math.min(i * 60, 360)" />
         <button class="bookmark-remove" :aria-label="`移除 ${post.title}`" @click="remove(post.slug)"><Trash2 :size="13" /> 移除</button>
@@ -52,15 +52,12 @@ function remove(slug: string) {
 .bookmarks-page { padding-top: 48px; padding-bottom: 80px; }
 .page-hero { text-align: center; margin-bottom: 36px; }
 .page-hero__sub { margin: 14px 0 18px; font-size: 14px; color: var(--text-muted); }
-.bookmark-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .bookmark-item { position: relative; }
 .bookmark-remove { position: absolute; z-index: 4; bottom: 10px; right: 48px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-solid); color: var(--text-muted); font-size: 10.5px; opacity: 0; transition: all .25s ease; }
 .bookmark-item:hover .bookmark-remove { opacity: 1; }
 .bookmark-remove:hover { color: var(--danger); border-color: rgba(239,68,68,.4); }
-@media (max-width: 1100px) { .bookmark-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 700px) {
   .bookmarks-page { padding-top: 30px; }
-  .bookmark-grid { grid-template-columns: 1fr; gap: 12px; }
-  .bookmark-remove { opacity: 1; }
+  .bookmark-remove { top: 8px; right: 8px; bottom: auto; opacity: 1; }
 }
 </style>

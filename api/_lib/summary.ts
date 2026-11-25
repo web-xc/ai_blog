@@ -71,10 +71,11 @@ export function extractive(title: string, markdown: string): AiResult {
   })
   const picked = [...scored].sort((a, b) => b.score - a.score).slice(0, 3).map((x) => x.sentence)
   const ordered = scored.filter((x) => picked.includes(x.sentence)).map((x) => x.sentence)
-  const summary = (ordered[0] || text.slice(0, 110)).replace(/[。；;]$/, '') + '。'
+  const first = ordered[0] || text.slice(0, 110)
+  const summary = first.replace(/[。；;]$/, '') + '。'
   return {
     summary,
-    bullets: ordered.length ? ordered : [text.slice(0, 110)],
+    bullets: ordered.length ? ordered.filter((s) => s !== first) : [text.slice(0, 110)],
     tags: keywords(text, title),
     source: 'local',
   }

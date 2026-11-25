@@ -199,7 +199,7 @@ onUnmounted(() => {
           <h2 class="section-title">继续<span class="gradient-text">阅读</span></h2>
         </div>
       </div>
-      <div class="related__grid">
+      <div class="post-list">
         <PostCard v-for="(p, i) in related" :key="p.slug" :post="p" :delay="i * 100" />
       </div>
     </section>
@@ -271,7 +271,6 @@ a.post-nav__item:hover strong { color: var(--accent); }
 .aside-card > svg { color: var(--accent); }
 .aside-card h4 { font-size: 13.5px; margin: 12px 0 6px; }
 .aside-card p { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.7; }
-.related__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .missing { padding-top: 90px; padding-bottom: 90px; }
 .missing .empty-state { max-width: 520px; margin: auto; border-radius: var(--radius-lg); }
 .missing h2 { margin: 0; font-size: 22px; }
@@ -281,7 +280,6 @@ a.post-nav__item:hover strong { color: var(--accent); }
   .post-layout { grid-template-columns: 1fr; }
   .post-aside { display: none; }
   .aside-card { display: none; }
-  .related__grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
   .post-banner { height: 190px; }
@@ -292,6 +290,5 @@ a.post-nav__item:hover strong { color: var(--accent); }
   .post-nav { grid-template-columns: 1fr; }
   .post-nav__item.is-right { text-align: left; }
   .post-nav__item.is-right > span { justify-content: flex-start; }
-  .related__grid { grid-template-columns: 1fr; }
 }
 </style>

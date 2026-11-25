@@ -24,7 +24,7 @@ const siblings = computed(() => getTags().filter((t) => t.name !== name.value).s
     </header>
 
     <section class="section">
-      <div v-if="posts.length" class="tag-posts">
+      <div v-if="posts.length" class="post-list">
         <PostCard v-for="(p, i) in posts" :key="p.slug" :post="p" :delay="i * 90" />
       </div>
       <div v-else class="empty-state glass">
@@ -54,11 +54,9 @@ const siblings = computed(() => getTags().filter((t) => t.name !== name.value).s
 .tag-hero p { margin: 0; font-size: 13.5px; color: var(--text-muted); }
 .tag-hero p strong { color: var(--accent); }
 .tag-hero .btn { margin-left: auto; position: relative; z-index: 1; }
-.tag-posts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .sibling-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .sibling-tags sup { font-size: 10px; opacity: .6; }
 .empty-state { border-radius: var(--radius); }
 .empty-state h3 { margin: 0; font-size: 17px; }
-@media (max-width: 1100px) { .tag-posts { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 700px) { .tag-hero { flex-wrap: wrap; padding: 24px; gap: 16px; margin-top: 28px; } .tag-hero .btn { margin-left: 0; } .tag-posts { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .tag-hero { flex-wrap: wrap; padding: 24px; gap: 16px; margin-top: 28px; } .tag-hero .btn { margin-left: 0; } }
 </style>

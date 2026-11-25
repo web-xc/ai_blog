@@ -293,7 +293,7 @@ onUnmounted(() => {
 .drawer-mask { position: fixed; inset: 0; z-index: 110; background: rgba(8, 11, 22, .42); backdrop-filter: blur(3px); }
 .nav-drawer {
   position: fixed; top: 0; right: 0; z-index: 111;
-  width: min(74vw, 278px); height: 100vh; height: 100dvh;
+  width: min(76vw, 296px); height: 100vh; height: 100dvh;
   display: flex; flex-direction: column;
   padding: 16px 14px calc(14px + env(safe-area-inset-bottom, 0px));
   background: var(--surface-solid);

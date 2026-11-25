@@ -342,14 +342,12 @@ a.chip:hover, button.chip:hover {
     border-top: 1px solid var(--border);
   }
   .post-list .post-card {
-    min-height: 104px;
     border: 0;
-    border-bottom: 1px solid var(--border);
     border-radius: 0;
     box-shadow: none;
     background: var(--surface-solid);
   }
-  .post-list > *:last-child .post-card { border-bottom: 0; }
+  .post-list > *:last-child .post-card::after { display: none; }
 }
 @media (max-width: 860px) {
   :root { --header-h: 60px; }

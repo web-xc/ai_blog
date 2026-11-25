@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { AUTH_KEY, DRAFTS_KEY, STATS_KEY } from '@/config/site'
 import { readJSON, writeJSON } from '@/lib/storage'
+import { cloudApi, cloudHealth, cloudMode, detectCloud, capability, type CloudStats } from '@/lib/cloud'
 import type { MarkdownDocument } from '@/lib/github'
 
 export interface Draft extends MarkdownDocument {
@@ -48,6 +49,7 @@ function createDraft(): Draft {
     cover: '✦',
     excerpt: '',
     pinned: false,
+    aiSummary: '',
     content: '## 从这里开始\n\n用 Markdown 写下你的想法吧。\n',
     updatedAt: Date.now(),
     published: false,
@@ -57,10 +59,61 @@ function createDraft(): Draft {
 export const useAdminStore = defineStore('admin', () => {
   const auth = ref<AuthRecord | null>(readJSON<AuthRecord | null>(AUTH_KEY, null))
   const authenticated = ref(sessionStorage.getItem('aurora-admin-session') === '1')
-  const hasPassword = computed(() => Boolean(auth.value?.hash))
-
   const drafts = ref<Draft[]>(readJSON<Draft[]>(DRAFTS_KEY, []))
   const views = ref<ViewEvent[]>(readJSON<ViewEvent[]>(STATS_KEY, []))
+  const cloudStats = ref<CloudStats | null>(null)
+
+  const cloudAuth = computed(() => capability('auth'))
+  const cloudModeLabel = computed(() =>
+    cloudMode.value === 'cloud' ? `${cloudHealth.value?.storage === 'kv' ? 'Vercel KV' : 'GitHub 仓库'} · 已连接` : '本地静态模式',
+  )
+  const hasPassword = computed(() => (cloudAuth.value ? true : Boolean(auth.value?.hash)))
+  const totalViews = computed(() => cloudStats.value?.total ?? views.value.length)
+
+  let draftSyncTimer = 0
+  function scheduleDraftSync() {
+    if (!capability('drafts')) return
+    window.clearTimeout(draftSyncTimer)
+    draftSyncTimer = window.setTimeout(() => {
+      void cloudApi.putDrafts(drafts.value).catch(() => {})
+    }, 700)
+  }
+
+  async function hydrate() {
+    const health = await detectCloud()
+    if (!health) return
+    if (capability('auth')) {
+      try {
+        const status = await cloudApi.authStatus()
+        authenticated.value = Boolean(status.authenticated)
+        if (status.authenticated) sessionStorage.setItem('aurora-admin-session', '1')
+        else sessionStorage.removeItem('aurora-admin-session')
+      } catch {
+        /* keep local session state */
+      }
+    }
+    if (capability('drafts')) {
+      try {
+        const result = await cloudApi.getDrafts()
+        if (Array.isArray(result.drafts)) {
+          drafts.value = result.drafts as Draft[]
+          writeJSON(DRAFTS_KEY, drafts.value)
+        }
+      } catch {
+        /* keep local drafts */
+      }
+    }
+    await refreshStats()
+  }
+
+  async function refreshStats() {
+    if (!capability('stats')) return
+    try {
+      cloudStats.value = await cloudApi.getStats()
+    } catch {
+      /* offline */
+    }
+  }
 
   async function setupPassword(password: string) {
     auth.value = { hash: await hashPassword(password) }
@@ -69,6 +122,18 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function login(password: string): Promise<boolean> {
+    if (cloudAuth.value) {
+      try {
+        const result = await cloudApi.login(password)
+        if (result.ok) {
+          grant()
+          return true
+        }
+        return false
+      } catch {
+        return false
+      }
+    }
     const hash = await hashPassword(password)
     if (!auth.value || hash !== auth.value.hash) return false
     grant()
@@ -83,14 +148,15 @@ export const useAdminStore = defineStore('admin', () => {
   function logout() {
     authenticated.value = false
     sessionStorage.removeItem('aurora-admin-session')
+    if (cloudAuth.value) void cloudApi.logout().catch(() => {})
   }
 
-  function changePassword(oldPwd: string, newPwd: string): Promise<boolean> {
-    return login(oldPwd).then(async (ok) => {
-      if (!ok) return false
-      await setupPassword(newPwd)
-      return true
-    })
+  async function changePassword(oldPwd: string, newPwd: string): Promise<boolean> {
+    if (cloudAuth.value) return false
+    const ok = await login(oldPwd)
+    if (!ok) return false
+    await setupPassword(newPwd)
+    return true
   }
 
   function newDraft(): Draft {
@@ -127,17 +193,18 @@ export const useAdminStore = defineStore('admin', () => {
 
   function persistDrafts() {
     writeJSON(DRAFTS_KEY, drafts.value)
+    scheduleDraftSync()
   }
 
   function recordView(slug: string) {
     views.value.push({ slug, t: Date.now() })
     if (views.value.length > 800) views.value = views.value.slice(-800)
     writeJSON(STATS_KEY, views.value)
+    if (capability('stats')) void cloudApi.track('view', slug).catch(() => {})
   }
 
-  const totalViews = computed(() => views.value.length)
-
   function viewsByDay(days = 7): { label: string; count: number }[] {
+    if (cloudStats.value?.daily?.length) return cloudStats.value.daily.slice(-days)
     const now = new Date()
     const result: { label: string; count: number }[] = []
     for (let i = days - 1; i >= 0; i--) {
@@ -153,6 +220,12 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   function topViewed(limit = 5): { slug: string; count: number }[] {
+    if (cloudStats.value?.views) {
+      return Object.entries(cloudStats.value.views)
+        .map(([slug, count]) => ({ slug, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit)
+    }
     const map = new Map<string, number>()
     views.value.forEach((v) => map.set(v.slug, (map.get(v.slug) || 0) + 1))
     return [...map.entries()]
@@ -162,22 +235,10 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   return {
-    authenticated,
-    hasPassword,
-    drafts,
-    views,
-    totalViews,
-    setupPassword,
-    login,
-    logout,
-    changePassword,
-    newDraft,
-    saveDraft,
-    deleteDraft,
-    getDraft,
-    markPublished,
-    recordView,
-    viewsByDay,
-    topViewed,
+    authenticated, hasPassword, drafts, views, totalViews,
+    cloudStats, cloudAuth, cloudModeLabel,
+    setupPassword, login, logout, changePassword,
+    newDraft, saveDraft, deleteDraft, getDraft, markPublished,
+    recordView, viewsByDay, topViewed, hydrate, refreshStats,
   }
 })

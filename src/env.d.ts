@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_TWIKOO_ENV_ID?: string
   readonly VITE_GITHUB_OWNER?: string
   readonly VITE_GITHUB_REPO?: string
+  /** Base path of the optional Vercel Serverless API (default /api). */
+  readonly VITE_API_BASE?: string
   /** Where the admin commits Markdown when the source lives in a repo subfolder. */
   readonly VITE_POSTS_DIR?: string
   /** Use hash routing when the site root 404.html belongs to another site. */

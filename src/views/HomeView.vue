@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { ArrowRight, Sparkles, PenLine, BookOpen, Hash, Folder, ChevronLeft, ChevronRight, Feather, Code2, Zap } from '@lucide/vue'
+import { ArrowRight, Sparkles, PenLine, BookOpen, Hash, Folder, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Feather, Code2, Zap } from '@lucide/vue'
 import { getPosts, getTags, getCategories } from '@/lib/posts'
 import { useSiteStore } from '@/stores/site'
 import PostCard from '@/components/PostCard.vue'
@@ -45,7 +45,7 @@ onUnmounted(() => clearTimeout(timer))
 <template>
   <div class="home">
     <!-- ============ HERO ============ -->
-    <section class="hero container">
+    <section v-if="site.showHero" class="hero container">
       <div class="hero__content">
         <div v-reveal class="hero__badge">
           <span class="hero__badge-dot" />
@@ -101,7 +101,16 @@ onUnmounted(() => clearTimeout(timer))
         <div class="orbit__satellite orbit__satellite--1" />
         <div class="orbit__satellite orbit__satellite--2" />
       </div>
+
+      <button v-if="site.config.allowHeroToggle" class="hero__toggle" @click="site.toggleHero()">
+        <ChevronUp :size="14" /> 收起横幅
+      </button>
     </section>
+
+    <div v-else-if="site.config.allowHeroToggle" class="container hero-restore">
+      <button class="btn btn-ghost btn-sm" @click="site.toggleHero()"><ChevronDown :size="14" /> 显示首页横幅</button>
+      <span>已隐藏首屏展示区，这个偏好只保存在当前设备</span>
+    </div>
 
     <!-- ============ TICKER ============ -->
     <div class="ticker">
@@ -130,8 +139,7 @@ onUnmounted(() => clearTimeout(timer))
           v-for="(post, i) in pagePosts"
           :key="post.slug"
           :post="post"
-          :featured="page === 1 && i === 0"
-          :delay="Math.min(i * 90, 450)"
+          :delay="Math.min(i * 60, 360)"
         />
       </div>
 
@@ -206,7 +214,7 @@ onUnmounted(() => clearTimeout(timer))
 
 <style scoped>
 /* hero */
-.hero { display: grid; grid-template-columns: 1.08fr 0.92fr; align-items: center; gap: 40px; padding: 86px 0 72px; min-height: 600px; }
+.hero { position: relative; display: grid; grid-template-columns: 1.08fr 0.92fr; align-items: center; gap: 40px; padding: 64px 0 52px; min-height: 500px; }
 .hero__badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 15px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-soft); box-shadow: var(--shadow-sm); }
 .hero__badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(16,185,129,.15); animation: pulse-glow 2s ease-in-out infinite; }
 .hero__title { font-size: clamp(40px, 5.4vw, 68px); font-weight: 820; line-height: 1.17; margin: 26px 0 20px; letter-spacing: -0.05em; }
@@ -218,6 +226,9 @@ onUnmounted(() => clearTimeout(timer))
 .hero__stat { display: flex; flex-direction: column; gap: 4px; }
 .hero__stat strong { font-size: 28px; font-weight: 780; letter-spacing: -.04em; color: var(--text); }
 .hero__stat span { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.hero__toggle { position: absolute; top: 2px; right: 0; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-solid); color: var(--text-muted); font-size: 11.5px; font-weight: 600; transition: all .3s var(--ease); }
+.hero__toggle:hover { color: var(--accent); border-color: rgba(var(--accent-rgb), .45); transform: translateY(-2px); }
+.hero-restore { display: flex; align-items: center; gap: 12px; padding-top: 28px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
 
 /* orbits */
 .hero__visual { position: relative; height: 440px; display: grid; place-items: center; }
@@ -248,8 +259,7 @@ onUnmounted(() => clearTimeout(timer))
 /* section head */
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 34px; flex-wrap: wrap; }
 .section-sub { margin: 10px 0 0; font-size: 14px; color: var(--text-muted); line-height: 1.8; }
-.post-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
-.post-grid > :first-child.post-card--featured { grid-column: 1 / -1; }
+.post-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 40px; flex-wrap: wrap; }
 .disabled { opacity: .4; pointer-events: none; }
 .pagination__pages { display: flex; gap: 6px; }
@@ -276,9 +286,13 @@ onUnmounted(() => clearTimeout(timer))
 .cta__glow { position: absolute; width: 380px; height: 380px; right: -90px; top: -180px; border-radius: 50%; background: radial-gradient(circle, rgba(var(--accent-rgb), .28), transparent 68%); filter: blur(30px); animation: float-slow 12s ease-in-out infinite; }
 .cta__content { position: relative; }
 
+@media (max-width: 1100px) {
+  .post-grid { grid-template-columns: repeat(2, 1fr); }
+  .topics__card { grid-template-columns: 1.4fr 1fr; gap: 24px; }
+}
 @media (max-width: 980px) {
-  .hero { grid-template-columns: 1fr; padding-top: 60px; }
-  .hero__visual { height: 330px; order: -1; }
+  .hero { grid-template-columns: 1fr; padding-top: 48px; gap: 18px; }
+  .hero__visual { height: 300px; order: -1; }
   .orbit--1 { width: 280px; height: 280px; } .orbit--2 { width: 210px; height: 210px; } .orbit--3 { width: 140px; height: 140px; }
   .orbit__core { width: 100px; height: 100px; font-size: 42px; }
   .float-chip--b { right: 2%; } .float-chip--c { left: 4%; }
@@ -286,10 +300,30 @@ onUnmounted(() => clearTimeout(timer))
   .topics__side { border-left: 0; border-top: 1px solid var(--border); padding: 24px 0 0; }
 }
 @media (max-width: 700px) {
-  .post-grid { grid-template-columns: 1fr; }
-  .hero__stats { gap: 22px; }
-  .hero__stat strong { font-size: 23px; }
-  .cta { padding: 30px 24px; }
-  .float-chip { font-size: 11px; padding: 8px 11px; }
+  .post-grid { grid-template-columns: 1fr; gap: 14px; }
+  .hero { padding: 20px 0 16px; min-height: 0; }
+  .hero__visual { height: 168px; }
+  .orbit--1 { width: 176px; height: 176px; } .orbit--2 { width: 132px; height: 132px; } .orbit--3 { width: 88px; height: 88px; }
+  .orbit__core { width: 66px; height: 66px; font-size: 28px; }
+  .float-chip { display: none; }
+  .orbit__satellite { width: 9px; height: 9px; }
+  .hero__title { font-size: clamp(30px, 8.4vw, 40px); margin: 16px 0 12px; }
+  .hero__sub { font-size: 14px; line-height: 1.8; margin-bottom: 20px; }
+  .hero__actions .btn { padding: 9px 15px; font-size: 13px; }
+  .hero__stats { gap: 16px; margin-top: 18px; padding-top: 16px; }
+  .hero__stat strong { font-size: 20px; }
+  .hero__toggle { top: -2px; }
+  .hero-restore { padding-top: 20px; }
+  .ticker { display: none; }
+  .section-head { margin-bottom: 22px; }
+  .section-title { font-size: 26px; }
+  .topics__card { padding: 22px 18px; }
+  .topics__cloud { gap: 8px; }
+  .cta { padding: 24px 18px; }
+  .pagination { gap: 8px; }
+}
+@media (max-width: 380px) {
+  .hero__stats { gap: 12px; }
+  .hero__stat strong { font-size: 18px; }
 }
 </style>

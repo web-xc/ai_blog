@@ -16,6 +16,8 @@ const router = createRouter({
     { path: '/tag/:name', name: 'tag', component: () => import('@/views/TagView.vue'), meta: { title: '标签' } },
     { path: '/search', name: 'search', component: () => import('@/views/SearchView.vue'), meta: { title: '搜索' } },
     { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: '关于' } },
+    { path: '/links', name: 'links', component: () => import('@/views/LinksView.vue'), meta: { title: '友链' } },
+    { path: '/bookmarks', name: 'bookmarks', component: () => import('@/views/BookmarksView.vue'), meta: { title: '稍后读' } },
     {
       path: '/admin/login',
       name: 'admin-login',

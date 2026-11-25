@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { CalendarDays, Clock, Hash, ArrowLeft, ArrowRight, ChevronRight, Link2, User, FileText, List, BookOpen, Copy } from '@lucide/vue'
+import { CalendarDays, Clock, Hash, ArrowLeft, ArrowRight, ChevronRight, Link2, User, FileText, List, BookOpen, Copy, X } from '@lucide/vue'
 import { getPost, getNeighbours, getRelated, gradientFor, humanDate } from '@/lib/posts'
 import { renderMarkdown } from '@/lib/markdown'
 import { useSiteStore } from '@/stores/site'
 import { useAdminStore } from '@/stores/admin'
+import { useExtrasStore } from '@/stores/extras'
 import { notify } from '@/lib/toast'
 import PostCard from '@/components/PostCard.vue'
 import CommentThread from '@/components/CommentThread.vue'
+import AiSummary from '@/components/AiSummary.vue'
+import PostActions from '@/components/PostActions.vue'
 
 const route = useRoute()
 const site = useSiteStore()
 const admin = useAdminStore()
+const extras = useExtrasStore()
+const lightboxSrc = ref('')
 const slug = computed(() => String(route.params.slug || ''))
 const post = computed(() => getPost(slug.value))
 const rendered = computed(() => (post.value ? renderMarkdown(post.value.content) : { html: '', toc: [], headings: 0 }))
@@ -35,16 +40,24 @@ function scrollTo(id: string) {
 
 function handleBodyClick(e: MouseEvent) {
   const target = e.target as HTMLElement
-  if (!target.matches('[data-copy]')) return
-  const code = target.closest('.code-block')?.querySelector('code')?.textContent || ''
-  navigator.clipboard?.writeText(code).then(
-    () => {
-      target.textContent = '已复制 ✓'
-      notify('代码已复制到剪贴板')
-      window.setTimeout(() => (target.textContent = '复制'), 1800)
-    },
-    () => notify('复制失败，请手动选择代码', 'error'),
-  )
+  if (target.matches('[data-copy]')) {
+    const code = target.closest('.code-block')?.querySelector('code')?.textContent || ''
+    navigator.clipboard?.writeText(code).then(
+      () => {
+        target.textContent = '已复制 ✓'
+        notify('代码已复制到剪贴板')
+        window.setTimeout(() => (target.textContent = '复制'), 1800)
+      },
+      () => notify('复制失败，请手动选择代码', 'error'),
+    )
+    return
+  }
+  if (target.tagName === 'IMG') {
+    lightboxSrc.value = (target as HTMLImageElement).src
+  }
+}
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape') lightboxSrc.value = ''
 }
 
 async function share() {
@@ -59,9 +72,13 @@ async function share() {
 onMounted(() => {
   if (post.value) admin.recordView(post.value.slug)
   window.addEventListener('scroll', updateToc, { passive: true })
+  window.addEventListener('keydown', onKey)
   updateToc()
 })
-onUnmounted(() => window.removeEventListener('scroll', updateToc))
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateToc)
+  window.removeEventListener('keydown', onKey)
+})
 </script>
 
 <template>
@@ -96,8 +113,29 @@ onUnmounted(() => window.removeEventListener('scroll', updateToc))
     <!-- body + toc -->
     <div class="container post-layout">
       <article class="post-main glass">
+        <AiSummary
+          :slug="post.slug"
+          :title="post.title"
+          :content="post.content"
+          :static-summary="post.aiSummary"
+        />
+
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div class="md-body" v-html="rendered.html" @click="handleBodyClick" />
+        <div
+          class="md-body"
+          :style="{ '--md-font-scale': extras.fontScale }"
+          v-html="rendered.html"
+          @click="handleBodyClick"
+        />
+
+        <PostActions
+          :slug="post.slug"
+          :title="post.title"
+          :toc="rendered.toc"
+          :active-id="activeId"
+          @scroll-to="scrollTo"
+          @share="share"
+        />
 
         <div class="post-tags">
           <RouterLink v-for="tag in post.tags" :key="tag" :to="`/tag/${encodeURIComponent(tag)}`" class="chip chip-accent">
@@ -165,6 +203,14 @@ onUnmounted(() => window.removeEventListener('scroll', updateToc))
         <PostCard v-for="(p, i) in related" :key="p.slug" :post="p" :delay="i * 100" />
       </div>
     </section>
+    <Teleport to="body">
+      <Transition name="lightbox">
+        <div v-if="lightboxSrc" class="lightbox" @click="lightboxSrc = ''">
+          <button class="lightbox__close" aria-label="关闭图片"><X :size="22" /></button>
+          <img :src="lightboxSrc" alt="放大查看" @click.stop />
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 
   <!-- missing post -->
@@ -199,6 +245,13 @@ onUnmounted(() => window.removeEventListener('scroll', updateToc))
 
 .post-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 26px; align-items: start; margin-top: 30px; }
 .post-main { padding: 36px 40px 40px; min-width: 0; }
+.post-main :deep(.md-body) { font-size: calc(15.5px * var(--md-font-scale, 1)); }
+.post-main :deep(.md-body img) { cursor: zoom-in; }
+.lightbox { position: fixed; inset: 0; z-index: 160; display: grid; place-items: center; padding: 5vh 5vw; background: rgba(6, 9, 20, .88); backdrop-filter: blur(8px); }
+.lightbox img { max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 30px 90px rgba(0,0,0,.5); }
+.lightbox__close { position: absolute; top: 18px; right: 18px; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.1); color: #fff; }
+.lightbox-enter-active, .lightbox-leave-active { transition: opacity .3s ease; }
+.lightbox-enter-from, .lightbox-leave-to { opacity: 0; }
 .post-tags { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 42px; padding-top: 24px; border-top: 1px solid var(--border); }
 .post-end { display: flex; align-items: center; gap: 16px; margin: 30px 0; font-size: 12px; color: var(--text-muted); letter-spacing: .05em; }
 .post-end__line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-strong), transparent); }
@@ -226,8 +279,7 @@ a.post-nav__item:hover strong { color: var(--accent); }
 
 @media (max-width: 1000px) {
   .post-layout { grid-template-columns: 1fr; }
-  .post-aside { position: static; flex-direction: row; }
-  .toc-panel { flex: 1; max-height: none; }
+  .post-aside { display: none; }
   .aside-card { display: none; }
   .related__grid { grid-template-columns: repeat(2, 1fr); }
 }

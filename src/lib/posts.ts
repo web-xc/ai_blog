@@ -20,6 +20,8 @@ export interface Post {
   tags: string[]
   cover: string
   excerpt: string
+  /** Static AI summary from frontmatter; shown before the article body. */
+  aiSummary: string
   pinned: boolean
   draft: boolean
   author: string
@@ -140,6 +142,7 @@ function buildPost(path: string, raw: string): Post {
     tags: arr(data.tags),
     cover: str(data.cover, '✦'),
     excerpt,
+    aiSummary: str(data.ai_summary),
     pinned: data.pinned === true || data.pinned === 'true',
     draft: data.draft === true || data.draft === 'true',
     author: str(data.author),

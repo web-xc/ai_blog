@@ -23,6 +23,8 @@ export interface MarkdownDocument {
   cover: string
   excerpt: string
   pinned: boolean
+  /** AI generated summary, stored as `ai_summary` in frontmatter. */
+  aiSummary?: string
   content: string
 }
 
@@ -59,6 +61,7 @@ export function toMarkdown(doc: MarkdownDocument): string {
     `cover: ${yamlString(doc.cover || '✦')}`,
     `excerpt: ${yamlString(doc.excerpt || doc.content.replace(/[#*`>\[\]()]/g, '').slice(0, 100).trim())}`,
     `pinned: ${doc.pinned ? 'true' : 'false'}`,
+    ...(doc.aiSummary ? [`ai_summary: ${yamlString(doc.aiSummary)}`] : []),
     '---',
     '',
     doc.content.trim(),

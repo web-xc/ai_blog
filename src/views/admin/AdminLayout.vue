@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, FileText, PenLine, MessageCircle, Settings, ExternalLink,
@@ -61,12 +61,21 @@ function logout() {
   notify('已退出后台', 'info')
   router.replace('/admin/login')
 }
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape') mobileOpen.value = false
+}
+watch(mobileOpen, (open) => { document.body.style.overflow = open ? 'hidden' : '' })
 
 onMounted(() => {
   if (!admin.authenticated) router.replace('/admin/login')
   timer = window.setInterval(() => (now.value = new Date()), 30000)
+  window.addEventListener('keydown', onKey)
 })
-onUnmounted(() => clearInterval(timer))
+onUnmounted(() => {
+  clearInterval(timer)
+  window.removeEventListener('keydown', onKey)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
@@ -97,7 +106,7 @@ onUnmounted(() => clearInterval(timer))
       </nav>
 
       <div class="admin-sidebar__foot">
-        <div class="deploy-badge"><span /> GitHub Actions 已就绪</div>
+        <div class="deploy-badge"><span /> {{ admin.cloudModeLabel }}</div>
         <RouterLink to="/" class="admin-nav__item"><ExternalLink :size="16" /> <span>查看站点</span></RouterLink>
         <button class="admin-nav__item" @click="site.toggleTheme()">
           <Sun v-if="site.isDark" :size="16" /><Moon v-else :size="16" />
@@ -134,8 +143,8 @@ onUnmounted(() => clearInterval(timer))
       </div>
 
       <footer class="admin-footer">
-        <span><ShieldCheck :size="13" /> 本地界面锁已启用</span>
-        <span>Aurora Admin · Vue 3 · Static First</span>
+        <span><ShieldCheck :size="13" /> {{ admin.cloudAuth ? '服务端会话鉴权已启用' : '本地界面锁已启用' }}</span>
+        <span>{{ admin.cloudModeLabel }} · Aurora Admin</span>
       </footer>
     </div>
   </div>
@@ -177,13 +186,14 @@ onUnmounted(() => clearInterval(timer))
 
 @media (max-width: 900px) {
   .admin-shell { grid-template-columns: 1fr; }
-  .admin-sidebar { position: fixed; left: 0; top: 0; width: 244px; transform: translateX(-100%); transition: transform .38s var(--ease); box-shadow: var(--shadow-lg); }
+  .admin-sidebar { position: fixed; right: 0; left: auto; top: 0; width: 244px; transform: translateX(100%); transition: transform .38s var(--ease); box-shadow: var(--shadow-lg); border-left: 1px solid var(--border); border-right: 0; }
   .admin-shell.is-mobile-open .admin-sidebar { transform: none; }
   .admin-shell.is-mobile-open .sidebar-mask { display: block; position: fixed; inset: 0; z-index: 45; background: rgba(8,11,22,.45); backdrop-filter: blur(3px); }
   .admin-menu-btn { display: inline-flex; }
   .admin-content { padding: 20px 16px; }
   .admin-topbar { padding: 0 16px; }
   .admin-clock { display: none; }
+  .admin-footer { padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 560px) { .admin-greet { display: none; } .admin-footer { flex-direction: column; padding: 14px 16px; } }
 </style>

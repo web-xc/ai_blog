@@ -9,7 +9,8 @@
     "typecheck": "vue-tsc --noEmit",
     "build": "vue-tsc --noEmit && vite build",
     "build:fast": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:api": "node scripts/smoke-api.cjs"
   },
   "dependencies": {
     "@lucide/vue": "^1.78.0",

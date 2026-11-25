@@ -3,12 +3,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeft, Save, UploadCloud, Eye, PenLine, Bold, Italic, Heading1, Heading2,
-  Link2, Code2, Quote, List, Image, Minus, Check, X, Loader2, FileText, Info, Sparkles,
+  Link2, Code2, Quote, List, Image, Minus, Check, X, Loader2, FileText, Info, Sparkles, Wand2,
 } from '@lucide/vue'
 import { useAdminStore, type Draft } from '@/stores/admin'
 import { useSiteStore } from '@/stores/site'
 import { renderPreview } from '@/lib/markdown'
 import { publishPost, slugify } from '@/lib/github'
+import { cloudApi, capability } from '@/lib/cloud'
+import { localSummary } from '@/lib/summary'
 import { notify, updateToast } from '@/lib/toast'
 
 const admin = useAdminStore()
@@ -23,12 +25,14 @@ const saved = ref(true)
 const mobilePane = ref<'edit' | 'preview'>('edit')
 const showPublish = ref(false)
 const publishing = ref(false)
+const aiBusy = ref(false)
 let saveTimer = 0
 
 const previewHtml = computed(() => (draft.value ? renderPreview(draft.value.content) : ''))
 const wordCount = computed(() => (draft.value?.content.replace(/\s/g, '').length || 0))
 const lineCount = computed(() => (draft.value?.content.split('\n').length || 0))
-const githubReady = computed(() => Boolean(site.config.github.owner && site.config.github.repo && site.config.github.token))
+const cloudPublish = computed(() => capability('publish'))
+const githubReady = computed(() => cloudPublish.value || Boolean(site.config.github.owner && site.config.github.repo && site.config.github.token))
 const targetPath = computed(() => (draft.value ? `src/content/posts/${slugify(draft.value.slug)}.md` : ''))
 
 function load() {
@@ -92,22 +96,48 @@ const tools = [
 async function openPublish() {
   persist()
   if (!githubReady.value) {
-    notify('请先在「站点设置」中填写 GitHub 仓库信息与 Token', 'error', 5000)
+    notify('请在「站点设置」填写 GitHub Token，或在 Vercel 配置 ADMIN_PASSWORD + GITHUB_TOKEN 启用云端发布', 'error', 6000)
     void router.push('/admin/settings')
     return
   }
   showPublish.value = true
 }
 
+async function generateAi() {
+  if (!draft.value || aiBusy.value) return
+  aiBusy.value = true
+  try {
+    let result = null
+    if (capability('ai')) {
+      try {
+        result = await cloudApi.ai('summary', { title: draft.value.title, content: draft.value.content })
+      } catch {
+        result = null
+      }
+    }
+    if (!result) result = localSummary(draft.value.title, draft.value.content)
+    draft.value.aiSummary = result.summary
+    scheduleSave()
+    notify(result.source === 'llm' ? 'AI 摘要已生成并写入元数据' : '已生成离线摘要（配置 AI_API_KEY 可升级为模型生成）', 'success')
+  } finally {
+    aiBusy.value = false
+  }
+}
+
 async function confirmPublish() {
   if (!draft.value) return
   publishing.value = true
+  const viaCloud = cloudPublish.value
   const toastId = notify(`正在提交「${draft.value.title}」…`, 'loading', 0)
   try {
-    const result = await publishPost(site.config.github, draft.value)
+    if (viaCloud) {
+      await cloudApi.publish({ ...draft.value })
+    } else {
+      await publishPost(site.config.github, draft.value)
+    }
     admin.markPublished(draft.value.id)
     showPublish.value = false
-    updateToast(toastId, `${result.created ? '发布' : '更新'}成功！GitHub Actions 正在部署`, 'success', 6500)
+    updateToast(toastId, `${viaCloud ? '云端发布' : '发布'}成功！${viaCloud ? 'Vercel' : 'GitHub Actions'} 正在重新构建`, 'success', 6500)
   } catch (e) {
     updateToast(toastId, e instanceof Error ? e.message : '发布失败', 'error', 6000)
   } finally {
@@ -165,6 +195,15 @@ onBeforeUnmount(() => {
           <div class="field"><label>封面 Emoji</label><input v-model="draft.cover" class="input" maxlength="4" /></div>
           <label class="switch-row"><span>置顶文章</span><button class="switch" :class="{ 'is-on': draft.pinned }" @click="draft.pinned = !draft.pinned" /></label>
           <div class="field field-wide"><label>摘要</label><textarea v-model="draft.excerpt" class="textarea" style="min-height: 68px" placeholder="留空则自动截取正文前 100 字" /></div>
+          <div class="field field-wide">
+            <label class="ai-label">AI 摘要
+              <button class="btn btn-ghost btn-sm" :disabled="aiBusy" @click="generateAi">
+                <Loader2 v-if="aiBusy" :size="13" class="spin" /><Wand2 v-else :size="13" />
+                {{ aiBusy ? '生成中…' : draft.aiSummary ? '重新生成' : 'AI 生成' }}
+              </button>
+            </label>
+            <textarea v-model="draft.aiSummary" class="textarea" style="min-height: 60px" placeholder="点击「AI 生成」自动提炼，会作为 ai_summary 随文章一起发布" />
+          </div>
         </div>
       </Transition>
     </section>
@@ -180,6 +219,7 @@ onBeforeUnmount(() => {
         <div class="pane__head">
           <span><PenLine :size="14" /> Markdown 编辑器</span>
           <div class="md-tools">
+            <button class="md-tools__ai" :title="aiBusy ? '生成中' : 'AI 生成摘要'" :disabled="aiBusy" @click="generateAi"><Wand2 :size="15" /></button>
             <button v-for="(t, i) in tools" :key="i" :title="t.title" :aria-label="t.title" @click="t.fn()"><component :is="t.icon" :size="15" /></button>
           </div>
         </div>
@@ -205,8 +245,8 @@ onBeforeUnmount(() => {
         <div class="dialog glass">
           <button class="dialog__close" aria-label="关闭" @click="showPublish = false"><X :size="17" /></button>
           <div class="dialog__icon"><UploadCloud :size="26" /></div>
-          <h2>确认发布到 GitHub？</h2>
-          <p>文章会以 Markdown 文件提交到仓库，并自动触发 GitHub Actions 重新构建部署。</p>
+          <h2>{{ cloudPublish ? '确认通过云端发布？' : '确认发布到 GitHub？' }}</h2>
+          <p>{{ cloudPublish ? 'Vercel 服务端会使用仓库凭据提交 Markdown，Token 不会暴露在浏览器，提交后自动触发重新构建。' : '文章会以 Markdown 文件提交到仓库，并自动触发 GitHub Actions 重新构建部署。' }}</p>
           <div class="dialog__info">
             <div><span>标题</span><strong>{{ draft.title }}</strong></div>
             <div><span>仓库</span><strong>{{ site.config.github.owner }}/{{ site.config.github.repo }}</strong></div>
@@ -255,6 +295,8 @@ onBeforeUnmount(() => {
 .md-tools button { width: 27px; height: 27px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); transition: all .25s ease; }
 .md-tools button:hover { color: var(--accent); background: rgba(var(--accent-rgb), .1); transform: translateY(-1px); }
 .md-tools button svg { color: inherit; }
+.md-tools__ai { color: var(--accent); background: rgba(var(--accent-rgb), .12); }
+.ai-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .pane__badge { margin-left: auto; font: 700 9.5px var(--font-mono); letter-spacing: .12em; color: var(--success); padding: 3px 8px; border-radius: 99px; background: rgba(16,185,129,.1); }
 .editor-textarea { flex: 1; width: 100%; min-height: 460px; padding: 18px; border: 0; outline: none; resize: vertical; background: transparent; color: var(--text); font: 13.5px/1.9 var(--font-mono); tab-size: 2; }
 .editor-textarea::placeholder { color: var(--text-muted); }

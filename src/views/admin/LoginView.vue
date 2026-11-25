@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Lock, ArrowLeft, ArrowRight, ShieldCheck, Sparkles, KeyRound, Eye, EyeOff } from '@lucide/vue'
+import { Lock, ArrowLeft, ArrowRight, ShieldCheck, Sparkles, KeyRound, Eye, EyeOff, Cloud, CloudOff } from '@lucide/vue'
 import { useAdminStore } from '@/stores/admin'
 import { useSiteStore } from '@/stores/site'
 import { notify } from '@/lib/toast'
@@ -87,9 +87,14 @@ onMounted(() => {
         </button>
       </form>
 
+      <div class="login-mode" :class="{ 'is-cloud': admin.cloudAuth }">
+        <Cloud v-if="admin.cloudAuth" :size="13" /><CloudOff v-else :size="13" />
+        {{ admin.cloudAuth ? '云端模式 · 密码由 Vercel 服务端校验' : '本地模式 · 界面锁保存在本机浏览器' }}
+      </div>
+
       <div class="login-note">
         <Sparkles :size="13" />
-        <span>密码仅保存在本机浏览器中，用于锁定后台界面；文章发布使用 GitHub Token 完成鉴权。</span>
+        <span>{{ admin.cloudAuth ? '登录后会下发 HttpOnly 会话 Cookie；文章发布由服务端凭据完成，浏览器不再持有密钥。' : '密码仅保存在本机浏览器中，用于锁定后台界面；文章发布使用 GitHub Token 完成鉴权。接入 Vercel 后可升级为云端鉴权。' }}</span>
       </div>
     </div>
   </div>
@@ -113,6 +118,8 @@ onMounted(() => {
 .pwd-toggle:hover { color: var(--accent); background: rgba(var(--accent-rgb), .08); }
 .login-error { padding: 9px 12px; border-radius: 10px; background: rgba(239,68,68,.1); color: var(--danger); font-size: 12.5px; }
 .login-submit { width: 100%; margin-top: 4px; padding: 12px; }
+.login-mode { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-solid); color: var(--text-muted); font-size: 11px; font-weight: 600; }
+.login-mode.is-cloud { color: var(--success); border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.07); }
 .login-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); text-align: left; font-size: 11.5px; line-height: 1.7; color: var(--text-muted); }
 .login-note svg { color: var(--accent); flex: none; margin-top: 2px; }
 </style>

@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { FileText, Hash, BookOpen, Eye, PenLine, Settings, ExternalLink, MessageCircle, ArrowRight, Sparkles, TrendingUp, UploadCloud, Check, Clock } from '@lucide/vue'
 import { getPosts, getTags, getCategories, formatDate } from '@/lib/posts'
 import { useAdminStore } from '@/stores/admin'
 import { useSiteStore } from '@/stores/site'
 import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import BrandGithub from '@/components/BrandGithub.vue'
+import { capability } from '@/lib/cloud'
 
 const admin = useAdminStore()
 const site = useSiteStore()
+onMounted(() => { void admin.refreshStats() })
 const posts = getPosts()
 const tags = getTags()
 const categories = getCategories()
@@ -18,13 +20,13 @@ const maxView = computed(() => Math.max(1, ...chart.value.map((d) => d.count)))
 const topPosts = computed(() =>
   admin.topViewed(4).map((v) => ({ ...v, post: posts.find((p) => p.slug === v.slug) })).filter((v) => v.post),
 )
-const githubReady = computed(() => Boolean(site.config.github.owner && site.config.github.repo && site.config.github.token))
+const githubReady = computed(() => capability('publish') || Boolean(site.config.github.owner && site.config.github.repo && site.config.github.token))
 
 const stats = computed(() => [
   { label: '已发布文章', value: posts.length, icon: FileText, tone: 'indigo', hint: `${categories.length} 个分类` },
   { label: '标签总数', value: tags.length, icon: Hash, tone: 'purple', hint: '内容脉络' },
   { label: '累计字数', value: totalWords.value, icon: BookOpen, tone: 'cyan', hint: '千字' },
-  { label: '本地浏览量', value: admin.totalViews, icon: Eye, tone: 'green', hint: '仅本机统计' },
+  { label: admin.cloudStats ? '云端浏览量' : '本地浏览量', value: admin.totalViews, icon: Eye, tone: 'green', hint: admin.cloudStats ? '全站访客实时统计' : '仅本机统计' },
 ])
 
 const quickActions = [
